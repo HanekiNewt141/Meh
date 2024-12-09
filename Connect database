@@ -1,0 +1,120 @@
+
+CREATE TABLE users (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  username VARCHAR(255),
+  password VARCHAR(255),
+  balance DECIMAL(10, 2)
+);
+
+CREATE TABLE mobile_load_transactions (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  user_id INT,
+  phone_number VARCHAR(255),
+  amount DECIMAL(10, 2),
+  network VARCHAR(255),
+  transaction_id VARCHAR(255),
+  status VARCHAR(255),
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+```
+
+# PHP Code
+```
+<?php
+
+// Configuration
+$gcash_api_key = 'YOUR_API_KEY';
+$gcash_merchant_id = 'YOUR_MERCHANT_ID';
+$db_host = 'localhost';
+$db_username = 'your_username';
+$db_password = 'your_password';
+$db_name = 'your_database';
+
+// Database connection
+$conn = mysqli_connect($db_host, $db_username, $db_password, $db_name);
+
+// Load purchase function
+function purchase_load($user_id, $phone_number, $amount, $network) {
+  global $conn, $gcash_api_key, $gcash_merchant_id;
+
+  // Check user balance
+  $query = "SELECT balance FROM users WHERE id = '$user_id'";
+  $result = mysqli_query($conn, $query);
+  $user_data = mysqli_fetch_assoc($result);
+  $balance = $user_data['balance'];
+
+  if ($balance < $amount) {
+    return array('status' => 'insufficient_balance');
+  }
+
+  // Purchase load via GCash API
+  $url = '(link unavailable)';
+  $headers = array(
+    'Authorization: Bearer ' . $gcash_api_key,
+    'Content-Type: application/json'
+  );
+  $data = array(
+    'merchant_id' => $gcash_merchant_id,
+    'phone_number' => $phone_number,
+    'amount' => $amount,
+    'network' => $network
+  );
+
+  $ch = curl_init($url);
+  curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+  curl_setopt($ch, CURLOPT_POST, true);
+  curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
+  curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+
+  $response = curl_exec($ch);
+  curl_close($ch);
+
+  $response_data = json_decode($response, true);
+  $transaction_id = $response_data['transaction_id'];
+
+  // Update user balance
+  $new_balance = $balance - $amount;
+  $query = "UPDATE users SET balance = '$new_balance' WHERE id = '$user_id'";
+  mysqli_query($conn, $query);
+
+  // Save transaction record
+  $query = "INSERT INTO mobile_load_transactions (user_id, phone_number, amount, network, transaction_id) VALUES ('$user_id', '$phone_number', '$amount', '$network', '$transaction_id')";
+  mysqli_query($conn, $query);
+
+  return array('status' => 'success', 'transaction_id' => $transaction_id);
+}
+
+// Load status check function
+function check_load_status($transaction_id) {
+  global $conn, $gcash_api_key, $gcash_merchant_id;
+
+  $url = '(link unavailable)';
+  $headers = array(
+    'Authorization: Bearer ' . $gcash_api_key,
+    'Content-Type: application/json'
+  );
+  $data = array(
+    'merchant_id' => $gcash_merchant_id,
+    'transaction_id' => $transaction_id
+  );
+
+  $ch = curl_init($url);
+  curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+  curl_setopt($ch, CURLOPT_POST, true);
+  curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
+  curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+
+  $response = curl_exec($ch);
+  curl_close($ch);
+
+  $response_data = json_decode($response, true);
+  $status = $response_data['status'];
+
+  // Update transaction record
+  $query = "UPDATE mobile_load_transactions SET status = '$status' WHERE transaction_id = '$transaction_id'";
+  mysqli_query($conn, $query);
+
+  return array('status' => $status);
+}
+
+?>
