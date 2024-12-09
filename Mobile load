@@ -1,0 +1,76 @@
+
+# PHP Code Example
+```
+<?php
+
+// Configuration
+$merchant_id = 'YOUR_MERCHANT_ID';
+$api_key = 'YOUR_API_KEY';
+$base_url = '(link unavailable)';
+
+// Load purchase function
+function purchase_load($phone_number, $amount, $network) {
+  global $merchant_id, $api_key, $base_url;
+
+  $url = $base_url . '/load/purchase';
+  $headers = array(
+    'Authorization: Bearer ' . $api_key,
+    'Content-Type: application/json'
+  );
+  $data = array(
+    'merchant_id' => $merchant_id,
+    'phone_number' => $phone_number,
+    'amount' => $amount,
+    'network' => $network
+  );
+
+  $ch = curl_init($url);
+  curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+  curl_setopt($ch, CURLOPT_POST, true);
+  curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
+  curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+
+  $response = curl_exec($ch);
+  curl_close($ch);
+
+  return json_decode($response, true);
+}
+
+// Load status check function
+function check_load_status($transaction_id) {
+  global $merchant_id, $api_key, $base_url;
+
+  $url = $base_url . '/load/status';
+  $headers = array(
+    'Authorization: Bearer ' . $api_key,
+    'Content-Type: application/json'
+  );
+  $data = array(
+    'merchant_id' => $merchant_id,
+    'transaction_id' => $transaction_id
+  );
+
+  $ch = curl_init($url);
+  curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+  curl_setopt($ch, CURLOPT_POST, true);
+  curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
+  curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+
+  $response = curl_exec($ch);
+  curl_close($ch);
+
+  return json_decode($response, true);
+}
+
+// Example usage
+$phone_number = '09171234567';
+$amount = 100;
+$network = 'Globe';
+
+$response = purchase_load($phone_number, $amount, $network);
+$transaction_id = $response['transaction_id'];
+
+$status = check_load_status($transaction_id);
+echo "Load status: " . $status['status'];
+
+?>
