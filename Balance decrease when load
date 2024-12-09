@@ -1,0 +1,88 @@
+
+# Index.php
+```
+<h1>Smart Load Purchase</h1>
+<form action="process_load.php" method="post">
+    <label>Phone Number:</label>
+    <input type="text" name="phone_number" required><br><br>
+    <label>Load Amount (PHP):</label>
+    <select name="load_amount">
+        <option value="30">30</option>
+        <option value="50">50</option>
+        <option value="100">100</option>
+        <option value="150">150</option>
+        <option value="200">200</option>
+        <option value="250">250</option>
+        <option value="300">300</option>
+    </select><br><br>
+    <input type="submit" value="Purchase Load">
+</form>
+```
+
+# Process_load.php
+```
+<?php
+
+// Configuration
+$gcash_api_key = 'YOUR_API_KEY';
+$gcash_merchant_id = 'YOUR_MERCHANT_ID';
+$db_host = 'localhost';
+$db_username = 'your_username';
+$db_password = 'your_password';
+$db_name = 'your_database';
+
+// Database connection
+$conn = mysqli_connect($db_host, $db_username, $db_password, $db_name);
+
+// Get form data
+$phone_number = $_POST['phone_number'];
+$load_amount = $_POST['load_amount'];
+
+// Check user balance
+$query = "SELECT balance FROM users WHERE id = 1"; // Replace with user's ID
+$result = mysqli_query($conn, $query);
+$user_data = mysqli_fetch_assoc($result);
+$balance = $user_data['balance'];
+
+if ($balance < $load_amount) {
+    echo "Insufficient balance!";
+    exit;
+}
+
+// Purchase load via GCash API
+$url = '(link unavailable)';
+$headers = array(
+    'Authorization: Bearer ' . $gcash_api_key,
+    'Content-Type: application/json'
+);
+$data = array(
+    'merchant_id' => $gcash_merchant_id,
+    'phone_number' => $phone_number,
+    'amount' => $load_amount,
+    'network' => 'Smart'
+);
+
+$ch = curl_init($url);
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+curl_setopt($ch, CURLOPT_POST, true);
+curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
+curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+
+$response = curl_exec($ch);
+curl_close($ch);
+
+$response_data = json_decode($response, true);
+$transaction_id = $response_data['transaction_id'];
+
+// Update user balance
+$new_balance = $balance - $load_amount;
+$query = "UPDATE users SET balance = '$new_balance' WHERE id = 1"; // Replace with user's ID
+mysqli_query($conn, $query);
+
+// Save transaction record
+$query = "INSERT INTO mobile_load_transactions (phone_number, load_amount, transaction_id) VALUES ('$phone_number', '$load_amount', '$transaction_id')";
+mysqli_query($conn, $query);
+
+echo "Load purchased successfully! Transaction ID: $transaction_id";
+
+?>
